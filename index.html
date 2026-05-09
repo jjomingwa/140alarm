@@ -210,6 +210,20 @@
       text-shadow: 0 1px 0 color-mix(in srgb, var(--surface) 80%, transparent);
     }
 
+    .remaining-adjust {
+      display: grid;
+      grid-template-columns: auto minmax(0, auto) auto;
+      justify-content: center;
+      align-items: center;
+      gap: clamp(8px, 1.4vw, 14px);
+    }
+
+    .remaining-step-button {
+      min-width: 64px;
+      min-height: 40px;
+      padding: 0 12px;
+    }
+
     .progress {
       width: min(86%, 560px);
       height: clamp(8px, 1vw, 10px);
@@ -477,6 +491,29 @@
         font-size: clamp(3.8rem, 20vw, 6.4rem);
       }
 
+      .remaining-adjust {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .remaining-adjust .countdown {
+        grid-column: 1 / -1;
+        grid-row: 1;
+      }
+
+      #decreaseRemainingButton {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      #increaseRemainingButton {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .remaining-step-button {
+        width: 100%;
+      }
+
       .primary,
       .secondary,
       .quiet {
@@ -495,6 +532,10 @@
 
       .countdown {
         font-size: clamp(4rem, 18cqi, 8.8rem);
+      }
+
+      .remaining-adjust {
+        gap: clamp(8px, 2.2cqi, 14px);
       }
 
       .progress {
@@ -524,7 +565,11 @@
       <section class="timer-stage" aria-label="타이머">
         <div class="timer-stack">
           <p class="eyebrow" id="modeLabel">대기 중</p>
-          <time class="countdown" id="countdown" datetime="PT1M40S">01:40</time>
+          <div class="remaining-adjust" aria-label="이번 알람까지 남은 시간 조절">
+            <button class="secondary remaining-step-button" type="button" id="decreaseRemainingButton" aria-label="이번 알람까지 남은 시간 5초 줄이기">-5초</button>
+            <time class="countdown" id="countdown" datetime="PT1M40S">01:40</time>
+            <button class="secondary remaining-step-button" type="button" id="increaseRemainingButton" aria-label="이번 알람까지 남은 시간 5초 늘리기">+5초</button>
+          </div>
           <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
           <div class="timer-meta" aria-live="polite">
             <span id="intervalLabel">반복 간격 01:40</span>
@@ -628,6 +673,7 @@
     const MIN_INTERVAL_SECONDS = 1;
     const MAX_INTERVAL_SECONDS = 7200;
     const DEFAULT_INTERVAL_SECONDS = 100;
+    const REMAINING_STEP_SECONDS = 5;
     const MAX_ALARM_VOLUME_PERCENT = 200;
     const ALARM_GAIN_BOOST = 2.4;
 
@@ -642,6 +688,8 @@
     const startButton = document.getElementById("startButton");
     const pauseButton = document.getElementById("pauseButton");
     const resetButton = document.getElementById("resetButton");
+    const decreaseRemainingButton = document.getElementById("decreaseRemainingButton");
+    const increaseRemainingButton = document.getElementById("increaseRemainingButton");
     const resetElapsedButton = document.getElementById("resetElapsedButton");
     const fontSelect = document.getElementById("fontSelect");
     const customMinutes = document.getElementById("customMinutes");
@@ -771,6 +819,26 @@
       applyIntervalChange();
     }
 
+    function adjustRemainingByFiveSeconds(direction) {
+      const now = Date.now();
+      const nextRemainingMs = clamp(
+        getDisplayedRemainingMs(now) + direction * REMAINING_STEP_SECONDS * 1000,
+        MIN_INTERVAL_SECONDS * 1000,
+        MAX_INTERVAL_SECONDS * 1000
+      );
+
+      remainingMs = nextRemainingMs;
+      if (runStartedAt !== null) {
+        cycleEndAt = now + nextRemainingMs;
+      } else {
+        cycleEndAt = null;
+      }
+
+      const actionText = direction > 0 ? "늘렸습니다" : "줄였습니다";
+      setStatus(`이번 알람까지 남은 시간을 5초 ${actionText}. 남은 시간 ${formatClock(Math.ceil(nextRemainingMs / 1000))}`);
+      render();
+    }
+
     function getAlarmVolume() {
       return clamp(Number(volumeSlider.value) || 0, 0, MAX_ALARM_VOLUME_PERCENT) / 100;
     }
@@ -797,6 +865,8 @@
       modeLabel.textContent = runStartedAt === null ? "대기 중" : "실행 중";
       startButton.disabled = runStartedAt !== null;
       pauseButton.disabled = runStartedAt === null;
+      decreaseRemainingButton.disabled = displayRemainingSeconds <= MIN_INTERVAL_SECONDS;
+      increaseRemainingButton.disabled = displayRemainingSeconds >= MAX_INTERVAL_SECONDS;
     }
 
     function ensureAudioContext() {
@@ -1024,6 +1094,8 @@
 
     decreaseIntervalButton.addEventListener("click", () => adjustIntervalByFiveSeconds(-1));
     increaseIntervalButton.addEventListener("click", () => adjustIntervalByFiveSeconds(1));
+    decreaseRemainingButton.addEventListener("click", () => adjustRemainingByFiveSeconds(-1));
+    increaseRemainingButton.addEventListener("click", () => adjustRemainingByFiveSeconds(1));
 
     volumeSlider.addEventListener("input", renderVolume);
 
