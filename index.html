@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1분 40초 반복 알람 타이머</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1ea;
+      --surface: #fffdf8;
+      --surface-muted: #f8f4eb;
+      --surface-strong: #ebe5d8;
+      --text: #161616;
+      --muted: #676158;
+      --line: #d8d0c1;
+      --accent: #0f766e;
+      --accent-strong: #0a5f59;
+      --accent-soft: #deeeeb;
+      --accent-warm: #a96820;
+      --warning: #a43f28;
+      --shadow: 0 24px 70px rgba(34, 29, 19, 0.13);
+      --shadow-soft: 0 12px 36px rgba(34, 29, 19, 0.08);
+      --timer-font: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #101315;
+      --surface: #1a2021;
+      --surface-muted: #15191b;
+      --surface-strong: #252c2e;
+      --text: #f4f1ea;
+      --muted: #b7afa2;
+      --line: #384144;
+      --accent: #7ed6ca;
+      --accent-strong: #a7e7df;
+      --accent-soft: #173b38;
+      --accent-warm: #e3a458;
+      --warning: #ff9c7d;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+      --shadow-soft: 0 12px 36px rgba(0, 0, 0, 0.24);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--line) 18%, transparent) 1px, transparent 1px),
+        linear-gradient(180deg, color-mix(in srgb, var(--line) 14%, transparent) 1px, transparent 1px),
+        linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg) 88%, var(--surface-strong)));
+      background-size: 48px 48px, 48px 48px, auto;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px clamp(18px, 4vw, 48px);
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 82%, var(--surface));
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: grid;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.1rem, 2vw, 1.45rem);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .layout {
+      width: min(1320px, 100%);
+      margin: 0 auto;
+      padding: clamp(18px, 4vw, 48px);
+      display: grid;
+      grid-template-columns: minmax(220px, 0.72fr) minmax(460px, 1.58fr) minmax(300px, 0.95fr);
+      gap: clamp(18px, 3vw, 34px);
+      align-items: center;
+      min-height: calc(100vh - 86px);
+    }
+
+    .panel {
+      background: linear-gradient(180deg, var(--surface), var(--surface-muted));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .total-panel {
+      min-height: 330px;
+      padding: 24px;
+      align-self: center;
+      display: grid;
+      align-content: center;
+      gap: 18px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .total-time {
+      font-family: var(--timer-font);
+      font-size: clamp(1.55rem, 3vw, 2.4rem);
+      font-weight: 850;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+
+    .small-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .timer-stage {
+      position: relative;
+      min-height: clamp(360px, 48vh, 480px);
+      aspect-ratio: 1.52 / 1;
+      align-self: center;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: clamp(24px, 4vw, 48px);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--accent-soft)), var(--surface-muted));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .timer-stage::after {
+      content: "";
+      position: absolute;
+      inset: clamp(14px, 2.4vw, 28px);
+      border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      border-radius: 8px;
+      box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .timer-stack {
+      width: min(100%, 720px);
+      display: grid;
+      gap: clamp(16px, 3vw, 26px);
+    }
+
+    .countdown {
+      margin: 0;
+      font-family: var(--timer-font);
+      font-size: clamp(5rem, 10vw, 9.25rem);
+      font-weight: 900;
+      letter-spacing: 0;
+      line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 0 color-mix(in srgb, var(--surface) 80%, transparent);
+    }
+
+    .progress {
+      width: min(86%, 560px);
+      height: 10px;
+      margin: 0 auto;
+      border-radius: 999px;
+      background: var(--surface-strong);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .progress span {
+      display: block;
+      width: calc(var(--progress, 0) * 100%);
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+      transition: width 120ms linear;
+    }
+
+    .timer-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .timer-meta span {
+      padding: 7px 11px;
+      border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--surface) 78%, transparent);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .status {
+      min-height: 1.5em;
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .primary,
+    .secondary,
+    .quiet {
+      min-width: 92px;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-weight: 800;
+    }
+
+    .primary {
+      color: #ffffff;
+      background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+      box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 26%, transparent);
+    }
+
+    .primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .secondary {
+      color: var(--text);
+      background: color-mix(in srgb, var(--surface) 52%, var(--surface-strong));
+      border: 1px solid var(--line);
+    }
+
+    .quiet {
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .options-panel {
+      padding: 24px;
+      align-self: center;
+      display: grid;
+      align-content: center;
+      gap: 18px;
+    }
+
+    .options-panel h2 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field label,
+    .group-label {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    select,
+    input[type="range"],
+    input[type="number"] {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 12px;
+      color: var(--text);
+      background: var(--surface-strong);
+    }
+
+    select:focus,
+    input[type="number"]:focus,
+    input[type="range"]:focus-visible,
+    button:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--accent) 62%, transparent);
+      outline-offset: 2px;
+    }
+
+    .theme-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-strong);
+    }
+
+    .theme-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .theme-toggle span {
+      display: grid;
+      place-items: center;
+      min-height: 34px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .theme-toggle input:checked + span {
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+
+    .interval-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .interval-step-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .step-button {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .input-unit {
+      display: grid;
+      gap: 6px;
+    }
+
+    .input-unit span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .option-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      min-height: 42px;
+      padding: 0;
+      accent-color: var(--accent);
+      background: transparent;
+      border: 0;
+    }
+
+    output {
+      min-width: 48px;
+      color: var(--muted);
+      font-weight: 800;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-button {
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .warning {
+      color: var(--warning);
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .total-panel,
+      .options-panel {
+        align-content: start;
+      }
+
+      .timer-stage {
+        min-height: 420px;
+        aspect-ratio: auto;
+        order: -1;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .layout {
+        padding: 16px;
+      }
+
+      .countdown {
+        font-size: clamp(4.1rem, 23vw, 7rem);
+      }
+
+      .primary,
+      .secondary,
+      .quiet {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>반복 알람 타이머</h1>
+        <span>기본 간격 1분 40초, 원하는 간격으로 반복 알림</span>
+      </div>
+      <p class="small-note" id="topSummary">반복 간격 01:40</p>
+    </header>
+
+    <main class="layout">
+      <aside class="panel total-panel" aria-label="총 누적시간">
+        <p class="eyebrow">총 누적시간</p>
+        <div class="total-time" id="elapsedTime">00:00:00</div>
+        <p class="small-note">타이머가 실행된 전체 시간입니다. 반복 간격을 바꿔도 유지됩니다.</p>
+        <button class="quiet" type="button" id="resetElapsedButton">누적시간 초기화</button>
+      </aside>
+
+      <section class="timer-stage" aria-label="타이머">
+        <div class="timer-stack">
+          <p class="eyebrow" id="modeLabel">대기 중</p>
+          <time class="countdown" id="countdown" datetime="PT1M40S">01:40</time>
+          <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+          <div class="timer-meta" aria-live="polite">
+            <span id="intervalLabel">반복 간격 01:40</span>
+            <span id="maxLabel">최대 시간 30분</span>
+          </div>
+          <p class="status" id="statusText">시작을 누르면 선택한 간격마다 알람이 울립니다.</p>
+          <div class="controls">
+            <button class="primary" type="button" id="startButton">시작</button>
+            <button class="secondary" type="button" id="pauseButton" disabled>일시정지</button>
+            <button class="secondary" type="button" id="resetButton">리셋</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel options-panel" aria-label="옵션">
+        <h2>옵션</h2>
+        <div class="option-grid">
+          <div class="field">
+            <div class="group-label">화면 모드</div>
+            <div class="theme-toggle" role="radiogroup" aria-label="화면 모드">
+              <label>
+                <input type="radio" name="theme" value="light" checked>
+                <span>라이트</span>
+              </label>
+              <label>
+                <input type="radio" name="theme" value="dark">
+                <span>다크</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="fontSelect">타이머 숫자 폰트</label>
+            <select id="fontSelect">
+              <option value="mono">모노스페이스</option>
+              <option value="system">시스템 굵은 글꼴</option>
+              <option value="serif">세리프</option>
+              <option value="rounded">둥근 산세리프</option>
+              <option value="digital">디지털 느낌</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <div class="group-label">반복 간격</div>
+            <div class="interval-inputs" id="intervalInputs">
+              <label class="input-unit">
+                <span>분</span>
+                <input id="customMinutes" type="number" min="0" max="120" step="1" value="1" inputmode="numeric" aria-label="반복 간격 분">
+              </label>
+              <label class="input-unit">
+                <span>초</span>
+                <input id="customSeconds" type="number" min="0" max="59" step="1" value="40" inputmode="numeric" aria-label="반복 간격 초">
+              </label>
+            </div>
+            <div class="interval-step-controls" aria-label="5초 단위 시간 조절">
+              <button class="secondary step-button" type="button" id="decreaseIntervalButton">-5초</button>
+              <button class="secondary step-button" type="button" id="increaseIntervalButton">+5초</button>
+            </div>
+            <p class="small-note" id="intervalHelp">반복 간격은 직접 입력하거나 5초 단위로 조절할 수 있습니다.</p>
+          </div>
+
+          <div class="field">
+            <label for="maxTimeSelect">최대 시간</label>
+            <select id="maxTimeSelect">
+              <option value="1800">30분</option>
+              <option value="3600">1시간</option>
+              <option value="7200">2시간</option>
+              <option value="infinite">영원히</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="soundSelect">알람 소리 종류</label>
+            <select id="soundSelect">
+              <option value="ttiring">띠링띠링</option>
+              <option value="ttidididi">띠디디디</option>
+              <option value="bright">밝고 경쾌한</option>
+              <option value="softBell">부드러운 벨</option>
+              <option value="shortBeep">짧은 비프</option>
+              <option value="rising">상승음</option>
+              <option value="digital">디지털 알림</option>
+              <option value="calm">차분한 차임</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="volumeSlider">알람 소리 크기</label>
+            <div class="range-row">
+              <input id="volumeSlider" type="range" min="0" max="100" step="1" value="80">
+              <output id="volumeValue" for="volumeSlider">80%</output>
+            </div>
+          </div>
+
+          <button class="secondary preview-button" type="button" id="previewSoundButton">알람음 미리듣기</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const MIN_INTERVAL_SECONDS = 1;
+    const MAX_INTERVAL_SECONDS = 7200;
+    const DEFAULT_INTERVAL_SECONDS = 100;
+
+    const countdown = document.getElementById("countdown");
+    const elapsedTime = document.getElementById("elapsedTime");
+    const progressBar = document.getElementById("progressBar");
+    const modeLabel = document.getElementById("modeLabel");
+    const statusText = document.getElementById("statusText");
+    const intervalLabel = document.getElementById("intervalLabel");
+    const maxLabel = document.getElementById("maxLabel");
+    const topSummary = document.getElementById("topSummary");
+    const startButton = document.getElementById("startButton");
+    const pauseButton = document.getElementById("pauseButton");
+    const resetButton = document.getElementById("resetButton");
+    const resetElapsedButton = document.getElementById("resetElapsedButton");
+    const fontSelect = document.getElementById("fontSelect");
+    const customMinutes = document.getElementById("customMinutes");
+    const customSeconds = document.getElementById("customSeconds");
+    const intervalHelp = document.getElementById("intervalHelp");
+    const decreaseIntervalButton = document.getElementById("decreaseIntervalButton");
+    const increaseIntervalButton = document.getElementById("increaseIntervalButton");
+    const maxTimeSelect = document.getElementById("maxTimeSelect");
+    const soundSelect = document.getElementById("soundSelect");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const volumeValue = document.getElementById("volumeValue");
+    const previewSoundButton = document.getElementById("previewSoundButton");
+
+    const timerFonts = {
+      mono: 'ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace',
+      system: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      serif: 'Georgia, "Times New Roman", serif',
+      rounded: '"Arial Rounded MT Bold", "Trebuchet MS", ui-sans-serif, system-ui, sans-serif',
+      digital: '"Courier New", Courier, ui-monospace, monospace'
+    };
+
+    let intervalSeconds = DEFAULT_INTERVAL_SECONDS;
+    let remainingMs = intervalSeconds * 1000;
+    let elapsedMs = 0;
+    let runStartedAt = null;
+    let cycleEndAt = null;
+    let tickId = null;
+    let audioContext = null;
+    let previewResetId = null;
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function formatClock(totalSeconds) {
+      const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+      const minutes = Math.floor(safeSeconds / 60);
+      const seconds = safeSeconds % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function formatElapsed(totalMs) {
+      const safeSeconds = Math.max(0, Math.floor(totalMs / 1000));
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+      const seconds = safeSeconds % 60;
+      return [
+        String(hours).padStart(2, "0"),
+        String(minutes).padStart(2, "0"),
+        String(seconds).padStart(2, "0")
+      ].join(":");
+    }
+
+    function formatDurationLabel(totalSeconds) {
+      if (!Number.isFinite(totalSeconds)) {
+        return "영원히";
+      }
+
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const parts = [];
+
+      if (hours > 0) parts.push(`${hours}시간`);
+      if (minutes > 0) parts.push(`${minutes}분`);
+      if (seconds > 0) parts.push(`${seconds}초`);
+
+      return parts.join(" ") || "0초";
+    }
+
+    function getMaxSeconds() {
+      return maxTimeSelect.value === "infinite" ? Infinity : Number(maxTimeSelect.value);
+    }
+
+    function getActiveElapsedMs(now = Date.now()) {
+      return runStartedAt === null ? elapsedMs : elapsedMs + now - runStartedAt;
+    }
+
+    function getDisplayedRemainingMs(now = Date.now()) {
+      return cycleEndAt === null ? remainingMs : Math.max(0, cycleEndAt - now);
+    }
+
+    function setStatus(text, isWarning = false) {
+      statusText.textContent = text;
+      statusText.classList.toggle("warning", isWarning);
+    }
+
+    function readCustomIntervalSeconds() {
+      const minutes = Number(customMinutes.value) || 0;
+      const seconds = Number(customSeconds.value) || 0;
+      return clamp(Math.round(minutes * 60 + seconds), MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS);
+    }
+
+    function syncIntervalInputs(totalSeconds) {
+      const safeSeconds = clamp(totalSeconds, MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS);
+      customMinutes.value = Math.floor(safeSeconds / 60);
+      customSeconds.value = safeSeconds % 60;
+    }
+
+    function resetIntervalHelp() {
+      intervalHelp.textContent = "반복 간격은 직접 입력하거나 5초 단위로 조절할 수 있습니다.";
+      intervalHelp.classList.remove("warning");
+    }
+
+    function readIntervalSeconds() {
+      return readCustomIntervalSeconds();
+    }
+
+    function applyIntervalChange() {
+      intervalSeconds = readIntervalSeconds();
+      remainingMs = intervalSeconds * 1000;
+
+      if (runStartedAt !== null) {
+        cycleEndAt = Date.now() + remainingMs;
+      } else {
+        cycleEndAt = null;
+      }
+
+      setStatus(`반복 간격을 ${formatDurationLabel(intervalSeconds)}로 변경했습니다.`);
+      render();
+    }
+
+    function adjustIntervalByFiveSeconds(direction) {
+      const nextSeconds = clamp(readCustomIntervalSeconds() + direction * 5, MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS);
+      syncIntervalInputs(nextSeconds);
+      resetIntervalHelp();
+      applyIntervalChange();
+    }
+
+    function getAlarmVolume() {
+      return clamp(Number(volumeSlider.value) || 0, 0, 100) / 100;
+    }
+
+    function renderVolume() {
+      volumeValue.textContent = `${Math.round(getAlarmVolume() * 100)}%`;
+    }
+
+    function render() {
+      const now = Date.now();
+      const displayRemainingMs = getDisplayedRemainingMs(now);
+      const displayRemainingSeconds = Math.ceil(displayRemainingMs / 1000);
+      const activeElapsedMs = getActiveElapsedMs(now);
+      const maxSeconds = getMaxSeconds();
+      const progress = 1 - clamp(displayRemainingMs / (intervalSeconds * 1000), 0, 1);
+
+      countdown.textContent = formatClock(displayRemainingSeconds);
+      countdown.dateTime = `PT${displayRemainingSeconds}S`;
+      elapsedTime.textContent = formatElapsed(activeElapsedMs);
+      progressBar.style.setProperty("--progress", progress.toFixed(4));
+      intervalLabel.textContent = `반복 간격 ${formatClock(intervalSeconds)}`;
+      topSummary.textContent = `반복 간격 ${formatClock(intervalSeconds)}`;
+      maxLabel.textContent = `최대 시간 ${formatDurationLabel(maxSeconds)}`;
+      modeLabel.textContent = runStartedAt === null ? "대기 중" : "실행 중";
+      startButton.disabled = runStartedAt !== null;
+      pauseButton.disabled = runStartedAt === null;
+    }
+
+    function ensureAudioContext() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) {
+        setStatus("이 브라우저에서는 알람 소리를 재생할 수 없습니다.", true);
+        return null;
+      }
+
+      if (!audioContext) {
+        audioContext = new AudioCtor();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      return audioContext;
+    }
+
+    function scheduleTone(context, startOffset, frequency, duration, type = "sine", volume = 0.22) {
+      const scaledVolume = clamp(volume * getAlarmVolume(), 0, 1);
+      if (scaledVolume <= 0) return;
+
+      const startAt = context.currentTime + startOffset;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(scaledVolume, startAt + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + duration + 0.03);
+    }
+
+    function playAlarm() {
+      const context = ensureAudioContext();
+      if (!context) return;
+
+      const sound = soundSelect.value;
+      const patterns = {
+        ttiring: [
+          [0, 880, 0.13, "sine"], [0.16, 1175, 0.16, "sine"],
+          [0.42, 880, 0.13, "sine"], [0.58, 1175, 0.18, "sine"]
+        ],
+        ttidididi: [
+          [0, 760, 0.08, "square"], [0.11, 980, 0.08, "square"],
+          [0.22, 760, 0.08, "square"], [0.33, 980, 0.08, "square"],
+          [0.44, 1160, 0.11, "square"]
+        ],
+        bright: [
+          [0, 523.25, 0.14, "triangle"], [0.15, 659.25, 0.14, "triangle"],
+          [0.30, 783.99, 0.14, "triangle"], [0.45, 1046.5, 0.2, "triangle"]
+        ],
+        softBell: [
+          [0, 659.25, 0.55, "sine", 0.16], [0.05, 987.77, 0.45, "sine", 0.1],
+          [0.62, 783.99, 0.42, "sine", 0.12]
+        ],
+        shortBeep: [
+          [0, 1000, 0.12, "square"], [0.18, 1000, 0.12, "square"]
+        ],
+        rising: [
+          [0, 440, 0.12, "sawtooth"], [0.14, 554.37, 0.12, "sawtooth"],
+          [0.28, 659.25, 0.12, "sawtooth"], [0.42, 880, 0.18, "sawtooth"]
+        ],
+        digital: [
+          [0, 1200, 0.07, "square"], [0.09, 900, 0.07, "square"],
+          [0.18, 1200, 0.07, "square"], [0.27, 900, 0.07, "square"],
+          [0.36, 1400, 0.12, "square"]
+        ],
+        calm: [
+          [0, 392, 0.22, "sine", 0.13], [0.24, 523.25, 0.22, "sine", 0.13],
+          [0.48, 659.25, 0.36, "sine", 0.12]
+        ]
+      };
+
+      patterns[sound].forEach(([offset, frequency, duration, type, volume]) => {
+        scheduleTone(context, offset, frequency, duration, type, volume);
+      });
+    }
+
+    function previewAlarm() {
+      const volumePercent = Math.round(getAlarmVolume() * 100);
+
+      playAlarm();
+      if (volumePercent === 0) {
+        setStatus("알람 소리 크기가 0%라 미리듣기 소리가 나지 않습니다.", true);
+      } else {
+        setStatus(`선택한 알람음을 ${volumePercent}% 음량으로 미리듣습니다.`);
+      }
+
+      previewSoundButton.disabled = true;
+      window.clearTimeout(previewResetId);
+      previewResetId = window.setTimeout(() => {
+        previewSoundButton.disabled = false;
+      }, 900);
+    }
+
+    function startTicker() {
+      if (tickId !== null) return;
+      tickId = window.setInterval(tick, 100);
+    }
+
+    function stopTicker() {
+      if (tickId === null) return;
+      window.clearInterval(tickId);
+      tickId = null;
+    }
+
+    function startTimer() {
+      if (runStartedAt !== null) return;
+
+      ensureAudioContext();
+      const now = Date.now();
+      runStartedAt = now;
+      cycleEndAt = now + remainingMs;
+      startTicker();
+      setStatus("타이머가 실행 중입니다.");
+      render();
+    }
+
+    function pauseTimer() {
+      if (runStartedAt === null) return;
+
+      const now = Date.now();
+      elapsedMs = getActiveElapsedMs(now);
+      remainingMs = getDisplayedRemainingMs(now);
+      runStartedAt = null;
+      cycleEndAt = null;
+      stopTicker();
+      setStatus("타이머를 일시정지했습니다.");
+      render();
+    }
+
+    function resetTimer() {
+      if (runStartedAt !== null) {
+        elapsedMs = getActiveElapsedMs();
+      }
+
+      runStartedAt = null;
+      cycleEndAt = null;
+      remainingMs = intervalSeconds * 1000;
+      stopTicker();
+      setStatus("타이머를 현재 반복 간격으로 리셋했습니다.");
+      render();
+    }
+
+    function resetElapsed() {
+      elapsedMs = 0;
+
+      if (runStartedAt !== null) {
+        runStartedAt = Date.now();
+      }
+
+      setStatus("총 누적시간을 초기화했습니다.");
+      render();
+    }
+
+    function stopAtLimit(now) {
+      elapsedMs = getMaxSeconds() * 1000;
+      remainingMs = getDisplayedRemainingMs(now);
+      runStartedAt = null;
+      cycleEndAt = null;
+      stopTicker();
+      setStatus("최대 시간에 도달해 타이머를 정지했습니다.", true);
+      render();
+    }
+
+    function tick() {
+      const now = Date.now();
+      const maxSeconds = getMaxSeconds();
+
+      if (Number.isFinite(maxSeconds) && getActiveElapsedMs(now) >= maxSeconds * 1000) {
+        stopAtLimit(now);
+        return;
+      }
+
+      if (cycleEndAt !== null && now >= cycleEndAt) {
+        playAlarm();
+
+        const cycleDurationMs = intervalSeconds * 1000;
+        do {
+          cycleEndAt += cycleDurationMs;
+        } while (cycleEndAt <= now);
+
+        remainingMs = Math.max(0, cycleEndAt - now);
+        setStatus(`${formatDurationLabel(intervalSeconds)}마다 알람이 울렸습니다. 다시 카운트다운합니다.`);
+      } else {
+        remainingMs = getDisplayedRemainingMs(now);
+      }
+
+      render();
+    }
+
+    document.querySelectorAll('input[name="theme"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          document.documentElement.dataset.theme = input.value;
+        }
+      });
+    });
+
+    fontSelect.addEventListener("change", () => {
+      document.documentElement.style.setProperty("--timer-font", timerFonts[fontSelect.value]);
+    });
+
+    [customMinutes, customSeconds].forEach((input) => {
+      input.addEventListener("input", () => {
+        const customSecondsValue = readCustomIntervalSeconds();
+        if (customSecondsValue === MIN_INTERVAL_SECONDS && (Number(customMinutes.value) || 0) + (Number(customSeconds.value) || 0) === 0) {
+          intervalHelp.textContent = "최소 간격은 1초입니다.";
+          intervalHelp.classList.add("warning");
+        } else {
+          resetIntervalHelp();
+        }
+
+        applyIntervalChange();
+      });
+    });
+
+    decreaseIntervalButton.addEventListener("click", () => adjustIntervalByFiveSeconds(-1));
+    increaseIntervalButton.addEventListener("click", () => adjustIntervalByFiveSeconds(1));
+
+    volumeSlider.addEventListener("input", renderVolume);
+
+    maxTimeSelect.addEventListener("change", () => {
+      const maxSeconds = getMaxSeconds();
+      setStatus(`최대 시간을 ${formatDurationLabel(maxSeconds)}로 변경했습니다.`);
+
+      if (runStartedAt !== null && Number.isFinite(maxSeconds) && getActiveElapsedMs() >= maxSeconds * 1000) {
+        stopAtLimit(Date.now());
+        return;
+      }
+
+      render();
+    });
+
+    startButton.addEventListener("click", startTimer);
+    pauseButton.addEventListener("click", pauseTimer);
+    resetButton.addEventListener("click", resetTimer);
+    resetElapsedButton.addEventListener("click", resetElapsed);
+    previewSoundButton.addEventListener("click", previewAlarm);
+
+    renderVolume();
+    render();
+  </script>
+</body>
+</html>
