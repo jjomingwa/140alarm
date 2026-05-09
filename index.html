@@ -613,7 +613,7 @@
           <div class="field">
             <label for="volumeSlider">알람 소리 크기</label>
             <div class="range-row">
-              <input id="volumeSlider" type="range" min="0" max="100" step="1" value="80">
+              <input id="volumeSlider" type="range" min="0" max="200" step="1" value="80">
               <output id="volumeValue" for="volumeSlider">80%</output>
             </div>
           </div>
@@ -628,6 +628,8 @@
     const MIN_INTERVAL_SECONDS = 1;
     const MAX_INTERVAL_SECONDS = 7200;
     const DEFAULT_INTERVAL_SECONDS = 100;
+    const MAX_ALARM_VOLUME_PERCENT = 200;
+    const ALARM_GAIN_BOOST = 2.4;
 
     const countdown = document.getElementById("countdown");
     const elapsedTime = document.getElementById("elapsedTime");
@@ -770,7 +772,7 @@
     }
 
     function getAlarmVolume() {
-      return clamp(Number(volumeSlider.value) || 0, 0, 100) / 100;
+      return clamp(Number(volumeSlider.value) || 0, 0, MAX_ALARM_VOLUME_PERCENT) / 100;
     }
 
     function renderVolume() {
@@ -816,7 +818,7 @@
     }
 
     function scheduleTone(context, startOffset, frequency, duration, type = "sine", volume = 0.22) {
-      const scaledVolume = clamp(volume * getAlarmVolume(), 0, 1);
+      const scaledVolume = clamp(volume * getAlarmVolume() * ALARM_GAIN_BOOST, 0, 1);
       if (scaledVolume <= 0) return;
 
       const startAt = context.currentTime + startOffset;
